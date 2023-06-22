@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Clearing this database...</title>
+</head>
+<body>
+  <h1>Clearing this database...</h1>
+  <button id="clearButton">Clear</button>
+  <div id="status"></div>
+  <div id="timer"></div>
+  <div id="elapsed"></div>
+
+  <script>
+    let timerInterval;
+    let seconds = 0;
+    let totalSeconds = 0;
+    
+    // Function to update the timer
+    function updateTimer(time) {
+      document.getElementById('timer').innerHTML = '<br>Timer: ' + time + ' seconds';
+    }
+    
+    function formatTime(time) {
+
+      const hours = Math.floor(time / 3600);
+      const minutes = Math.floor((time % 3600) / 60);
+      const seconds = Math.floor(time % 60);
+      const formattedTime = `${hours}:${padZero(minutes)}:${padZero(seconds)}`;
+
+      return formattedTime;
+    }
+
+    // Function to update the elapsed time
+    function updateElapsed(time) {
+      document.getElementById('elapsed').textContent = 'Elapsed: ' + formatTime(time);
+    }
+    
+    // Function to pad zero for single-digit numbers
+    function padZero(num) {
+      return num.toString().padStart(2, '0');
+    }
+    
+    function startTimer() {
+      // Reset the timer and start counting
+      clearInterval(timerInterval);
+      timerInterval = setInterval(function() {
+        seconds++;
+        totalSeconds++;
+        updateTimer(seconds);
+        updateElapsed(totalSeconds);
+      }, 1000);
+    }
+    
+    document.addEventListener('DOMContentLoaded', function() {
+      // Function to perform the AJAX request
+      function performClear() {
+        seconds = 0;
+        const startTime = new Date().getTime();
+
+        const xhr = new XMLHttpRequest();
+        xhr.open('GET', '/clear.php', true);
+        xhr.onload = function() {
+          const endTime = new Date().getTime();
+          const executionTime = (endTime - startTime) / 1000; // Calculate execution time in seconds
+          const response = JSON.parse(this.responseText.trim());
+
+          // Output the result
+          document.getElementById('status').innerHTML = response.deletedRecords + " records deleted.<br>" + response.remainingRecords + " records left.<br>Time: " + formatTime(response.executionTime) + ".<br>Remaining Time: " + formatTime(response.remainingTime) + "\n";
+
+          if (response.deletedRecords === '0' || response.remainingRecords === '0') {
+            clearInterval(timerInterval);
+            return;
+          }
+
+          // Reset the timer and perform the clear again after 1-10 seconds
+          setTimeout(performClear, 1000 + Math.random() * 10000);
+        };
+        xhr.onerror = function() {
+          document.getElementById('status').textContent = 'Error occurred while clearing. Retrying...';
+
+          setTimeout(performClear, 1000);
+        };
+        xhr.send();
+      }
+
+      // Event handler for the clear button click
+      document.getElementById('clearButton').addEventListener('click', function() {
+        document.getElementById('status').textContent = 'Clearing...';
+        document.getElementById('clearButton').style.display = "none";
+
+        startTimer();
+
+        // Perform the initial clear
+        performClear();
+      });
+    });
+  </script>
+</body>
+</html>
